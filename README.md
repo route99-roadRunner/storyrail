@@ -2,6 +2,8 @@
 
 웹소설 작가가 원고를 직접 쓰는 동안 회차 플롯, 구조 진행 단계, 재료 체크리스트와 복선을 옆에서 관리하는 로컬 우선 집필 IDE입니다.
 
+StoryRail은 독립적으로 설계·구현된 프로젝트입니다. 장편 웹소설의 구조와 연속성을 도구로 관리한다는 문제의식은 [Awesome Novel Studio](https://github.com/MJbae/awesome-novel-studio)에서 아이디어적 영감을 받았습니다.
+
 ![StoryRail MVP 화면](./storyrail-preview.png)
 
 ## 실행
