@@ -1057,7 +1057,7 @@ select:focus-visible {
   bottom: 18px;
   width: min(720px, calc(100vw - 40px));
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 16px;
   padding: 10px 12px 10px 15px;
@@ -1068,6 +1068,9 @@ select:focus-visible {
   transform: translateX(-50%);
   backdrop-filter: blur(10px);
 }
+.focus-hud-copy {
+  min-width: 0;
+}
 .focus-hud span {
   font-size: 11px;
   font-weight: 700;
@@ -1077,6 +1080,11 @@ select:focus-visible {
   margin: 0;
   font-size: 11px;
   color: #6d5b50;
+}
+.focus-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .focus-hud button {
   display: flex;
@@ -1168,5 +1176,147 @@ select:focus-visible {
   }
   .guide-ribbon p {
     display: none;
+  }
+}
+
+.onboarding-screen {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  overflow: auto;
+  background:
+    radial-gradient(
+      circle at 20% 15%,
+      rgba(194, 92, 59, 0.12),
+      transparent 28%
+    ),
+    linear-gradient(145deg, #f5f3eb, #e8e9df);
+}
+.onboarding-card {
+  width: min(100%, 580px);
+  padding: 42px;
+  border: 1px solid rgba(71, 73, 63, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 252, 0.94);
+  box-shadow: 0 24px 70px rgba(52, 54, 47, 0.12);
+}
+.onboarding-mark {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 24px;
+  border-radius: 15px;
+  color: white;
+  background: var(--accent);
+}
+.onboarding-card .eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+.onboarding-card h1 {
+  max-width: 460px;
+  margin: 0;
+  color: #303229;
+  font-size: clamp(25px, 4vw, 34px);
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+}
+.onboarding-copy {
+  margin: 16px 0 26px;
+  color: #6c6f64;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.onboarding-field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+  color: #55584f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.onboarding-field input {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #cfd1c7;
+  border-radius: 8px;
+  background: white;
+  color: #303229;
+  font-size: 15px;
+}
+.onboarding-field input:focus {
+  outline: 3px solid rgba(194, 92, 59, 0.18);
+  border-color: var(--accent);
+}
+.onboarding-primary,
+.onboarding-import {
+  width: 100%;
+  min-height: 42px;
+  justify-content: center;
+}
+.onboarding-import {
+  margin-top: 8px;
+}
+.onboarding-steps {
+  display: grid;
+  gap: 10px;
+  margin: 26px 0 0;
+  padding: 22px 0 0;
+  border-top: 1px solid #e5e5dd;
+  list-style: none;
+}
+.onboarding-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #686b61;
+  font-size: 12px;
+}
+.onboarding-steps strong {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--accent);
+  background: rgba(194, 92, 59, 0.1);
+  font-size: 11px;
+}
+
+@media (max-width: 600px) {
+  .onboarding-screen {
+    padding: 18px;
+  }
+  .onboarding-card {
+    padding: 28px 22px;
+  }
+}
+.focus-hud .focus-exit {
+  gap: 5px;
+  padding-left: 9px;
+  border-left: 1px solid #dbcfc6;
+}
+.focus-hud kbd {
+  padding: 2px 4px;
+  border: 1px solid #d3c4b9;
+  border-radius: 3px;
+  color: #7a675b;
+  background: #fffdfa;
+  font: inherit;
+  font-size: 9px;
+}
+@media (max-width: 640px) {
+  .focus-hud {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .focus-hud-actions {
+    justify-content: flex-end;
   }
 }

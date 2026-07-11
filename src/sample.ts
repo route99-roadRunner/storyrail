@@ -29,10 +29,29 @@ export function createEpisode(number: number): Episode {
   };
 }
 
+export function createEmptyProject(): Project {
+  return {
+    schemaVersion: 2,
+    id: uid(),
+    title: "제목 없는 작품",
+    arcs: [],
+    foreshadows: [],
+    presets: DEFAULT_PRESETS,
+    settings: {
+      leftPanelWidth: 260,
+      rightPanelWidth: 360,
+      leftPanelOpen: true,
+      rightPanelOpen: true,
+      focusMode: false,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function createSampleProject(): Project {
   const episode = createEpisode(1);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: uid(),
     title: "나의 웹소설",
     arcs: [

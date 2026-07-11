@@ -28,7 +28,8 @@ import { loadLastProject, saveProject } from "./db";
 import { completeActiveGuideStep } from "./domain";
 import { exportEpisode, exportProject, htmlToText } from "./exporters";
 import { instantiatePreset } from "./presets";
-import { createEpisode, createSampleProject } from "./sample";
+import { createEmptyProject, createEpisode } from "./sample";
+import { migrateProject } from "./migrations";
 import type {
   Arc,
   Episode,
@@ -61,13 +62,15 @@ function currentContext(project: Project, selection: Selection) {
   return { arc, episode, scene };
 }
 
-function initialSelection(project: Project): Selection {
+function initialSelection(project: Project): Selection | null {
   const arc = project.arcs[0];
-  const episode = arc.episodes[0];
+  const episode = arc?.episodes[0];
+  const scene = episode?.scenes[0];
+  if (!arc || !episode || !scene) return null;
   return {
     arcId: arc.id,
     episodeId: episode.id,
-    sceneId: episode.scenes[0].id,
+    sceneId: scene.id,
   };
 }
 
@@ -100,14 +103,14 @@ export default function App() {
   useEffect(() => {
     loadLastProject()
       .then((stored) => {
-        const loaded = stored ?? createSampleProject();
+        const loaded = stored ?? createEmptyProject();
         setProject(loaded);
         setSelection(initialSelection(loaded));
         setSaveStatus(stored ? "saved" : "saving");
         setHydrated(true);
       })
       .catch(() => {
-        const fallback = createSampleProject();
+        const fallback = createEmptyProject();
         setProject(fallback);
         setSelection(initialSelection(fallback));
         setSaveStatus("error");
@@ -188,6 +191,17 @@ export default function App() {
         event.preventDefault();
         completeCurrentStep();
       }
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        toggleSetting("focusMode");
+      }
+      if (event.key === "Escape" && project?.settings.focusMode) {
+        event.preventDefault();
+        mutateProject((value) => ({
+          ...value,
+          settings: { ...value.settings, focusMode: false },
+        }));
+      }
       if (event.ctrlKey && event.key.toLowerCase() === "j") {
         event.preventDefault();
         toggleSetting("rightPanelOpen");
@@ -201,18 +215,81 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   });
 
-  if (
-    !project ||
-    !selection ||
-    !context?.arc ||
-    !context.episode ||
-    !context.scene
-  ) {
+  if (!project || !hydrated) {
     return (
       <div className="loading-screen">
         <span className="spinner" />
         StoryRail을 여는 중…
       </div>
+    );
+  }
+
+  if (!selection || !context?.arc || !context.episode || !context.scene) {
+    return (
+      <main className="onboarding-screen">
+        <section className="onboarding-card" aria-labelledby="onboarding-title">
+          <span className="onboarding-mark" aria-hidden="true">
+            <BookOpen size={28} />
+          </span>
+          <p className="eyebrow">STORYRAIL 시작하기</p>
+          <h1 id="onboarding-title">첫 이야기를 위한 레일을 놓아 보세요.</h1>
+          <p className="onboarding-copy">
+            작품과 첫 회차를 만든 뒤, 목표와 구조를 정하고 직접 원고를 써 내려갈
+            수 있습니다. 모든 데이터는 이 브라우저에 저장됩니다.
+          </p>
+          <label className="onboarding-field">
+            <span>작품 이름</span>
+            <input
+              aria-label="새 작품 이름"
+              value={project.title}
+              autoFocus
+              onChange={(event) =>
+                mutateProject((value) => ({
+                  ...value,
+                  title: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <button
+            className="primary-button onboarding-primary"
+            onClick={startFirstEpisode}
+          >
+            <Sparkles size={16} /> 첫 회차 만들기
+          </button>
+          <button
+            className="secondary-button onboarding-import"
+            onClick={() => importInput.current?.click()}
+          >
+            <Import size={15} /> JSON 백업에서 가져오기
+          </button>
+          <input
+            ref={importInput}
+            type="file"
+            accept=".json"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void importFromFile(file);
+              event.target.value = "";
+            }}
+          />
+          <ul className="onboarding-steps" aria-label="첫 사용 순서">
+            <li>
+              <strong>1</strong>
+              <span>회차 목표와 종료 상태를 적습니다.</span>
+            </li>
+            <li>
+              <strong>2</strong>
+              <span>구조 프리셋을 골라 집필 순서를 준비합니다.</span>
+            </li>
+            <li>
+              <strong>3</strong>
+              <span>원고를 쓰며 재료를 문단에 연결합니다.</span>
+            </li>
+          </ul>
+        </section>
+      </main>
     );
   }
 
@@ -281,6 +358,35 @@ export default function App() {
     window.addEventListener("pointerup", onUp);
   }
 
+  function startFirstEpisode() {
+    const firstEpisode = createEpisode(1);
+    const firstArc = project!.arcs[0];
+    const arcId = firstArc?.id ?? uid();
+    mutateProject((value) => ({
+      ...value,
+      title: value.title.trim() || "제목 없는 작품",
+      arcs: firstArc
+        ? value.arcs.map((item) =>
+            item.id === firstArc.id
+              ? { ...item, episodes: [...item.episodes, firstEpisode] }
+              : item,
+          )
+        : [
+            {
+              id: arcId,
+              title: "1부",
+              goal: "",
+              episodes: [firstEpisode],
+            },
+          ],
+    }));
+    setSelection({
+      arcId,
+      episodeId: firstEpisode.id,
+      sceneId: firstEpisode.scenes[0].id,
+    });
+    setNotice("첫 회차를 만들었습니다. 회차 목표부터 적어 보세요.");
+  }
   function selectEpisode(targetArc: Arc, targetEpisode: Episode) {
     setSelection({
       arcId: targetArc.id,
@@ -691,13 +797,7 @@ export default function App() {
 
   async function importFromFile(file: File) {
     try {
-      const parsed = JSON.parse(await file.text()) as Project;
-      if (
-        parsed.schemaVersion !== 1 ||
-        !parsed.id ||
-        !Array.isArray(parsed.arcs)
-      )
-        throw new Error("invalid");
+      const parsed = migrateProject(JSON.parse(await file.text()));
       if (
         !window.confirm(
           "현재 작업을 가져온 프로젝트로 전환할까요? 기존 작업은 로컬에 보존됩니다.",
@@ -738,7 +838,19 @@ export default function App() {
             mutateProject((value) => ({ ...value, title: event.target.value }))
           }
         />
-        <div className={`save-state ${saveStatus}`} title="자동 저장 상태">
+        <div
+          className={`save-state ${saveStatus}`}
+          title="자동 저장 상태"
+          role="status"
+          aria-live="polite"
+          aria-label={`자동 저장 상태: ${
+            saveStatus === "saved"
+              ? "저장됨"
+              : saveStatus === "error"
+                ? "저장 오류"
+                : "저장 중"
+          }`}
+        >
           {saveStatus === "saved" ? (
             <Check size={14} />
           ) : saveStatus === "error" ? (
@@ -769,7 +881,7 @@ export default function App() {
           </button>
           <button
             className="icon-button"
-            title="집중 모드"
+            title="집중 모드 (Ctrl+Shift+F)"
             onClick={() => toggleSetting("focusMode")}
           >
             {project.settings.focusMode ? (
@@ -1101,7 +1213,11 @@ export default function App() {
                 <PanelRightClose size={16} />
               </button>
             </div>
-            <nav className="tabs">
+            <nav
+              className="tabs"
+              role="tablist"
+              aria-label="회차 내비게이터 탭"
+            >
               {(
                 [
                   ["plot", "플롯"],
@@ -1114,13 +1230,16 @@ export default function App() {
                 <button
                   key={id}
                   className={rightTab === id ? "active" : ""}
+                  role="tab"
+                  aria-selected={rightTab === id}
+                  aria-controls="navigator-panel"
                   onClick={() => setRightTab(id)}
                 >
                   {label}
                 </button>
               ))}
             </nav>
-            <div className="right-content">
+            <div className="right-content" id="navigator-panel" role="tabpanel">
               {rightTab === "plot" && (
                 <PlotPanel
                   episode={episode}
@@ -1226,18 +1345,39 @@ export default function App() {
           <PanelLeftClose size={16} />
         </button>
       )}
-      {project.settings.focusMode && activeStep && (
-        <div className="focus-hud">
-          <span>{activeStep.title}</span>
-          <p>{activeStep.instruction}</p>
-          <button onClick={completeCurrentStep}>
-            완료 <ChevronRight size={14} />
-          </button>
+      {project.settings.focusMode && (
+        <div className="focus-hud" role="status" aria-label="집중 모드 안내">
+          <div className="focus-hud-copy">
+            <span>{activeStep?.title ?? "집중 모드"}</span>
+            <p>
+              {activeStep?.instruction ??
+                "현재 진행 중인 구조 단계가 없습니다. 원고 작성에 집중하세요."}
+            </p>
+          </div>
+          <div className="focus-hud-actions">
+            {activeStep && (
+              <button onClick={completeCurrentStep}>
+                완료 <ChevronRight size={14} />
+              </button>
+            )}
+            <button
+              className="focus-exit"
+              aria-label="집중 모드 종료"
+              title="집중 모드 종료 (Esc)"
+              onClick={() => toggleSetting("focusMode")}
+            >
+              <X size={14} /> 종료 <kbd>Esc</kbd>
+            </button>
+          </div>
         </div>
       )}
-      {notice && <div className="toast">{notice}</div>}
+      {notice && (
+        <div className="toast" role="status" aria-live="polite">
+          {notice}
+        </div>
+      )}
       {undoSnapshot && (
-        <div className="undo-toast">
+        <div className="undo-toast" role="status" aria-live="polite">
           <span>{undoSnapshot.label}</span>
           <button
             onClick={() => {
@@ -1319,7 +1459,11 @@ function EditableList({
     <section className="panel-section">
       <div className="section-title">
         <span>{title}</span>
-        <button onClick={() => onChange([...items, ""])}>
+        <button
+          aria-label={`${title} 항목 추가`}
+          title={`${title} 항목 추가`}
+          onClick={() => onChange([...items, ""])}
+        >
           <Plus size={14} />
         </button>
       </div>

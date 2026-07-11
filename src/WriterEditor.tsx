@@ -89,6 +89,9 @@ export default function WriterEditor({
       attributes: {
         class: "manuscript",
         spellcheck: "true",
+        role: "textbox",
+        "aria-label": "원고 편집기",
+        "aria-multiline": "true",
       },
     },
     onUpdate: ({ editor: currentEditor }) => onChange(currentEditor.getHTML()),

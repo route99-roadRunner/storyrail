@@ -98,7 +98,7 @@ export interface ProjectSettings {
 }
 
 export interface Project {
-  schemaVersion: 1;
+  schemaVersion: 2;
   id: Id;
   title: string;
   arcs: Arc[];

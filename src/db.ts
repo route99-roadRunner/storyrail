@@ -1,17 +1,27 @@
 import type { Project } from "./types";
+import { migrateProject } from "./migrations";
 
 const DB_NAME = "storyrail-db";
 const STORE_NAME = "projects";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const LAST_PROJECT_KEY = "last-project-id";
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const database = request.result;
       if (!database.objectStoreNames.contains(STORE_NAME)) {
         database.createObjectStore(STORE_NAME, { keyPath: "id" });
+      } else if (event.oldVersion < 2) {
+        const store = request.transaction!.objectStore(STORE_NAME);
+        const cursorRequest = store.openCursor();
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (!cursor) return;
+          cursor.update(migrateProject(cursor.value));
+          cursor.continue();
+        };
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -42,7 +52,7 @@ export async function loadLastProject(): Promise<Project | null> {
     request.onerror = () => reject(request.error);
   });
   database.close();
-  return project ?? null;
+  return project ? migrateProject(project) : null;
 }
 
 export async function deleteProject(id: string): Promise<void> {
